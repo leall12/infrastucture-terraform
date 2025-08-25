@@ -3,7 +3,7 @@ name: Create S3 Static Site
 on:
   issues:
     types:
-      -opened
+      - opened
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -22,21 +22,23 @@ jobs:
           
       - name: Extract Bucket Name from Issue
         run: |
-          export BUCKET_NAME=$(echo "${{ github.event.issue.title}}")
+          BUCKET_NAME=$(echo "${{ github.event.issue.title }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
           echo "Bucket Name: $BUCKET_NAME"
           echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
-      
+
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.6 
+          terraform_version: 1.6.6
+
+      - name: Check Terraform Version
+        run: terraform version  # <-- isso serve para garantir que está instalado!
 
       - name: Run Terraform
         run: |
-          cd terraform
-          cd s3-bucket-static
+          cd terraform/s3-bucket-static
           terraform init
-          terraform apply -auto-approve -var="bucket_name=${{ env.BUCKET_NAME}}"
+          terraform apply -auto-approve -var="bucket_name=${{ env.BUCKET_NAME }}"
 
       - name: Add comment
         run: gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
@@ -45,5 +47,4 @@ jobs:
           NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
           BODY: >
-            O bucket S# foi criado com sucesso!
-
+            O bucket S3 foi criado com sucesso!
